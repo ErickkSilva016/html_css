@@ -1,10 +1,8 @@
-const supabase = require('../config/supabase');
-
 // Listar todos os produtos (pode filtrar por categoria: livro ou papelaria)
 exports.listarProdutos = async (req, res) => {
   try {
     const { categoria } = req.query; // Permite filtrar com ?categoria=livro ou ?categoria=papelaria
-    let query = supabase.from('produtos').select('*');
+    let query = req.supabase.from('produtos').select('*');
 
     if (categoria) {
       query = query.eq('categoria', categoria);
@@ -23,7 +21,7 @@ exports.listarProdutos = async (req, res) => {
 exports.buscarProdutoPorId = async (req, res) => {
   try {
     const { id } = req.params;
-    const { data, error } = await supabase
+    const { data, error } = await req.supabase
       .from('produtos')
       .select('*')
       .eq('id', id)
@@ -43,7 +41,7 @@ exports.criarProduto = async (req, res) => {
   try {
     const { titulo, descricao, preco, categoria, genero, amostra_primeira_pagina, estoque, is_combo } = req.body;
 
-    const { data, error } = await supabase
+    const { data, error } = await req.supabase
       .from('produtos')
       .insert([{ titulo, descricao, preco, categoria, genero, amostra_primeira_pagina, estoque, is_combo }])
       .select();

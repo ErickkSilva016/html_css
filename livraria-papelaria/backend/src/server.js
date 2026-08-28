@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+const { identificarUsuario } = require('./middlewares/auth');
+
 // Rotas
 const produtoRoutes = require('./routes/produtoRoutes');
 const authRoutes = require('./routes/authRoutes');
@@ -13,6 +15,10 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Lê o token do usuário (se houver) e prepara req.user / req.supabase
+// para todas as rotas abaixo, respeitando RLS em vez de ignorá-la.
+app.use(identificarUsuario);
 
 // Endpoints da API
 app.use('/api/produtos', produtoRoutes);

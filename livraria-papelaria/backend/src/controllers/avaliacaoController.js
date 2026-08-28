@@ -1,11 +1,11 @@
-const supabase = require('../config/supabase');
-
 // Deixar uma avaliação no produto
 exports.criarAvaliacao = async (req, res) => {
   try {
-    const { produto_id, usuario_id, comentario, nota, foi_comprado } = req.body;
+    const { produto_id, comentario, nota, foi_comprado } = req.body;
+    // usuario_id vem do token (req.user), nunca do body: mesma lógica do diário.
+    const usuario_id = req.user.id;
 
-    const { data, error } = await supabase
+    const { data, error } = await req.supabase
       .from('avaliacoes')
       .insert([
         {
@@ -31,7 +31,7 @@ exports.listarAvaliacoesDoProduto = async (req, res) => {
   try {
     const { produto_id } = req.params;
 
-    const { data, error } = await supabase
+    const { data, error } = await req.supabase
       .from('avaliacoes')
       .select('*, profiles(nome)')
       .eq('produto_id', produto_id);

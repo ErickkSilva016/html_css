@@ -1,11 +1,13 @@
-const supabase = require('../config/supabase');
-
 // Criar uma nova anotação no diário
 exports.criarAnotacao = async (req, res) => {
   try {
-    const { usuario_id, livro_titulo, data_inicio, data_fim, anotacoes, privacidade } = req.body;
+    const { livro_titulo, data_inicio, data_fim, anotacoes, privacidade } = req.body;
+    // usuario_id vem do token (req.user), nunca do body: assim bate com
+    // auth.uid() usado pela policy de RLS e ninguém consegue criar
+    // anotação em nome de outra pessoa.
+    const usuario_id = req.user.id;
 
-    const { data, error } = await supabase
+    const { data, error } = await req.supabase
       .from('diario_leitura')
       .insert([
         {
@@ -32,7 +34,7 @@ exports.listarDiarioDoUsuario = async (req, res) => {
   try {
     const { usuario_id } = req.params;
 
-    const { data, error } = await supabase
+    const { data, error } = await req.supabase
       .from('diario_leitura')
       .select('*')
       .eq('usuario_id', usuario_id);
@@ -48,7 +50,7 @@ exports.listarDiarioDoUsuario = async (req, res) => {
 // Listar todas as anotações públicas da comunidade
 exports.listarDiariosPublicos = async (req, res) => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await req.supabase
       .from('diario_leitura')
       .select('*, profiles(nome)')
       .in('privacidade', ['publico', 'parcial']);
