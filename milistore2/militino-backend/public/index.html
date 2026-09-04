@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MILISTORE — Estilo para todos os momentos</title>
+<meta name="description" content="MILISTORE — moda feminina, masculina, infantil, calçados e acessórios. Elegância e conforto em cada peça.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ============================================================
+     TOAST / NOTIFICAÇÕES
+============================================================ -->
+<div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+<!-- ============================================================
+     HEADER
+============================================================ -->
+<header class="site-header" id="site-header">
+  <div class="header-top">
+    <button class="icon-btn hamburger" id="hamburger-btn" aria-label="Abrir menu" aria-expanded="false">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <a href="#" class="logo" data-view="home" aria-label="MILISTORE — página inicial">
+      <span class="logo-mark">M</span><span class="logo-word">ILISTORE</span>
+    </a>
+
+    <form class="search-form" id="search-form" role="search">
+      <label for="search-input" class="sr-only">Pesquisar produtos</label>
+      <input type="search" id="search-input" placeholder="Buscar camiseta, vestido, tênis..." autocomplete="off">
+      <button type="submit" aria-label="Pesquisar"><i class="fa-solid fa-magnifying-glass"></i></button>
+    </form>
+
+    <div class="header-icons">
+      <button class="icon-btn mobile-search-btn" id="mobile-search-btn" aria-label="Pesquisar"><i class="fa-solid fa-magnifying-glass"></i></button>
+      <button class="icon-btn" id="account-btn" aria-label="Minha conta" data-view="account"><i class="fa-regular fa-user"></i></button>
+      <button class="icon-btn" id="favorites-btn" aria-label="Favoritos" data-view="favorites">
+        <i class="fa-regular fa-heart"></i>
+        <span class="badge" id="favorites-badge">0</span>
+      </button>
+      <button class="icon-btn" id="cart-btn" aria-label="Carrinho de compras">
+        <i class="fa-solid fa-bag-shopping"></i>
+        <span class="badge" id="cart-badge">0</span>
+      </button>
+    </div>
+  </div>
+
+  <nav class="main-nav" id="main-nav" aria-label="Categorias principais">
+    <a href="#" data-view="home" class="active">Início</a>
+    <a href="#" data-view="home" data-publico="feminino">Feminino</a>
+    <a href="#" data-view="home" data-publico="masculino">Masculino</a>
+    <a href="#" data-view="home" data-publico="infantil">Infantil</a>
+    <a href="#" data-view="home" data-categoria="calcados">Calçados</a>
+    <a href="#" data-view="home" data-categoria="acessorios">Acessórios</a>
+    <a href="#" data-view="home" data-ofertas="1" class="nav-highlight">Ofertas</a>
+  </nav>
+</header>
+
+<!-- Overlay usado por menu mobile, drawer de filtros e carrinho -->
+<div class="overlay" id="overlay"></div>
+
+<!-- ============================================================
+     DRAWER DO CARRINHO
+============================================================ -->
+<aside class="cart-drawer" id="cart-drawer" aria-label="Carrinho de compras">
+  <div class="drawer-header">
+    <h2>Seu carrinho</h2>
+    <button class="icon-btn" id="close-cart-btn" aria-label="Fechar carrinho"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="drawer-body" id="cart-items-container"></div>
+  <div class="drawer-footer" id="cart-drawer-footer">
+    <div class="coupon-row">
+      <input type="text" id="coupon-input" placeholder="Cupom de desconto">
+      <button class="btn btn-outline" id="apply-coupon-btn">Aplicar</button>
+    </div>
+    <div class="summary-row"><span>Subtotal</span><span id="cart-subtotal">R$ 0,00</span></div>
+    <div class="summary-row"><span>Frete</span><span id="cart-shipping">Calculado no checkout</span></div>
+    <div class="summary-row" id="cart-discount-row" hidden><span>Desconto</span><span id="cart-discount">R$ 0,00</span></div>
+    <div class="summary-row summary-total"><span>Total</span><span id="cart-total">R$ 0,00</span></div>
+    <button class="btn btn-primary btn-block" id="checkout-btn">Finalizar compra</button>
+  </div>
+</aside>
+
+<!-- ============================================================
+     MAIN — VIEWS (SPA)
+============================================================ -->
+<main id="app">
+
+  <!-- ---------- HOME ---------- -->
+  <section id="view-home" class="view">
+
+    <section class="hero">
+      <div class="hero-media" aria-hidden="true">
+        <img src="https://images.unsplash.com/photo-1490114538077-0a7f8cb49891?q=80&w=1600&auto=format&fit=crop" alt="">
+      </div>
+      <div class="hero-content">
+        <p class="hero-eyebrow">Coleção atual</p>
+        <h1>Estilo para todos os momentos.</h1>
+        <p class="hero-sub">Descubra roupas e calçados selecionados para toda a família.</p>
+        <div class="hero-actions">
+          <button class="btn btn-primary" data-scroll-to="produtos-grid">Comprar agora</button>
+          <button class="btn btn-ghost-light" data-scroll-to="categorias">Ver coleção</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="categories" id="categorias">
+      <h2 class="section-title">Explore por categoria</h2>
+      <div class="category-grid" id="category-grid"><!-- injetado via JS --></div>
+    </section>
+
+    <section class="style-builder" id="monte-seu-estilo">
+      <div class="style-builder-head">
+        <h2 class="section-title">Monte seu estilo</h2>
+        <p class="section-sub">Combine filtros e veja a vitrine mudar na hora.</p>
+        <button class="btn btn-outline mobile-filter-toggle" id="mobile-filter-toggle"><i class="fa-solid fa-sliders"></i> Filtros</button>
+      </div>
+
+      <div class="builder-layout">
+        <form class="filters-panel" id="filters-panel" aria-label="Filtros de produtos">
+          <button type="button" class="icon-btn close-filters-btn" id="close-filters-btn" aria-label="Fechar filtros"><i class="fa-solid fa-xmark"></i></button>
+
+          <fieldset class="filter-group">
+            <legend>Público</legend>
+            <div class="chip-group" data-filter="publico">
+              <button type="button" class="chip" data-value="feminino">Feminino</button>
+              <button type="button" class="chip" data-value="masculino">Masculino</button>
+              <button type="button" class="chip" data-value="infantil">Infantil</button>
+            </div>
+          </fieldset>
+
+          <fieldset class="filter-group">
+            <legend>Tipo</legend>
+            <div class="chip-group" data-filter="categoria">
+              <button type="button" class="chip" data-value="camiseta">Camiseta</button>
+              <button type="button" class="chip" data-value="camisa">Camisa</button>
+              <button type="button" class="chip" data-value="calca">Calça</button>
+              <button type="button" class="chip" data-value="short">Short</button>
+              <button type="button" class="chip" data-value="saia">Saia</button>
+              <button type="button" class="chip" data-value="vestido">Vestido</button>
+              <button type="button" class="chip" data-value="jaqueta">Jaqueta</button>
+              <button type="button" class="chip" data-value="moletom">Moletom</button>
+              <button type="button" class="chip" data-value="tenis">Tênis</button>
+              <button type="button" class="chip" data-value="sapato">Sapato</button>
+              <button type="button" class="chip" data-value="acessorio">Acessórios</button>
+            </div>
+          </fieldset>
+
+          <fieldset class="filter-group">
+            <legend>Tamanho</legend>
+            <div class="chip-group size-chip-group" data-filter="tamanho">
+              <button type="button" class="chip chip-size" data-value="PP">PP</button>
+              <button type="button" class="chip chip-size" data-value="P">P</button>
+              <button type="button" class="chip chip-size" data-value="M">M</button>
+              <button type="button" class="chip chip-size" data-value="G">G</button>
+              <button type="button" class="chip chip-size" data-value="GG">GG</button>
+            </div>
+          </fieldset>
+
+          <fieldset class="filter-group">
+            <legend>Cor</legend>
+            <div class="color-swatch-group" id="color-filter-group" data-filter="cor"><!-- injetado via JS --></div>
+          </fieldset>
+
+          <fieldset class="filter-group">
+            <legend>Faixa de preço</legend>
+            <div class="price-range-inputs">
+              <label>Mín. <input type="number" id="price-min" min="0" placeholder="R$ 0"></label>
+              <label>Máx. <input type="number" id="price-max" min="0" placeholder="R$ 1000"></label>
+            </div>
+            <input type="range" id="price-slider" min="0" max="1000" value="1000">
+          </fieldset>
+
+          <fieldset class="filter-group">
+            <legend>Estilo</legend>
+            <div class="chip-group" data-filter="estilo">
+              <button type="button" class="chip" data-value="casual">Casual</button>
+              <button type="button" class="chip" data-value="social">Social</button>
+              <button type="button" class="chip" data-value="esportivo">Esportivo</button>
+              <button type="button" class="chip" data-value="streetwear">Streetwear</button>
+              <button type="button" class="chip" data-value="basico">Básico</button>
+              <button type="button" class="chip" data-value="elegante">Elegante</button>
+              <button type="button" class="chip" data-value="infantil">Infantil</button>
+            </div>
+          </fieldset>
+
+          <button type="button" class="btn btn-outline btn-block" id="clear-filters-btn">Limpar filtros</button>
+          <button type="button" class="btn btn-primary btn-block apply-filters-mobile" id="apply-filters-mobile-btn">Ver resultados</button>
+        </form>
+
+        <div class="products-column">
+          <div class="products-toolbar">
+            <p id="results-count">— produtos</p>
+            <label class="sort-label">Ordenar
+              <select id="sort-select">
+                <option value="relevancia">Relevância</option>
+                <option value="menor-preco">Menor preço</option>
+                <option value="maior-preco">Maior preço</option>
+                <option value="melhor-avaliados">Melhor avaliados</option>
+              </select>
+            </label>
+          </div>
+          <div class="product-grid" id="produtos-grid" aria-live="polite"><!-- injetado via JS --></div>
+          <p class="empty-state" id="empty-products" hidden>Nenhum produto encontrado com esses filtros. Tente ajustar sua busca.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="size-guide-teaser">
+      <div class="teaser-text">
+        <h2 class="section-title">Não sabe seu tamanho?</h2>
+        <p>Use nosso guia inteligente e receba uma recomendação em segundos.</p>
+        <button class="btn btn-primary" id="open-size-guide-home">Descobrir meu tamanho</button>
+      </div>
+    </section>
+  </section>
+
+  <!-- ---------- PRODUTO ---------- -->
+  <section id="view-product" class="view">
+    <div class="product-page" id="product-page-content"><!-- injetado via JS --></div>
+  </section>
+
+  <!-- ---------- FAVORITOS ---------- -->
+  <section id="view-favorites" class="view">
+    <div class="simple-page">
+      <h1 class="page-heading">Meus favoritos</h1>
+      <div class="product-grid" id="favorites-grid"></div>
+      <p class="empty-state" id="empty-favorites" hidden>Você ainda não favoritou nenhum produto.</p>
+    </div>
+  </section>
+
+  <!-- ---------- CHECKOUT ---------- -->
+  <section id="view-checkout" class="view">
+    <div class="simple-page checkout-page">
+      <h1 class="page-heading">Finalizar compra</h1>
+      <div class="checkout-layout">
+        <div class="checkout-steps">
+
+          <div class="checkout-block">
+            <h2><i class="fa-solid fa-location-dot"></i> Endereço de entrega</h2>
+            <form class="checkout-address-form" id="checkout-address-form">
+              <label>CEP <input type="text" id="chk-cep" placeholder="00000-000" required></label>
+              <label>Rua <input type="text" id="chk-rua" required></label>
+              <label>Número <input type="text" id="chk-numero" required></label>
+              <label>Complemento <input type="text" id="chk-complemento"></label>
+              <label>Bairro <input type="text" id="chk-bairro" required></label>
+              <label>Cidade <input type="text" id="chk-cidade" required></label>
+              <label>Estado <input type="text" id="chk-estado" maxlength="2" required></label>
+            </form>
+          </div>
+
+          <div class="checkout-block">
+            <h2><i class="fa-solid fa-truck"></i> Entrega</h2>
+            <div class="radio-cards" id="shipping-options">
+              <label class="radio-card">
+                <input type="radio" name="shipping" value="retirada">
+                <span><strong>Retirada na loja</strong><br>Grátis · disponível em 1 dia útil</span>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="shipping" value="normal" checked>
+                <span><strong>Entrega normal</strong><br>R$ 19,90 · 5 a 8 dias úteis</span>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="shipping" value="expressa">
+                <span><strong>Entrega expressa</strong><br>R$ 39,90 · 1 a 2 dias úteis</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="checkout-block">
+            <h2><i class="fa-solid fa-credit-card"></i> Pagamento</h2>
+            <div class="payment-tabs" role="tablist">
+              <button type="button" class="payment-tab active" data-payment="pix" role="tab">PIX</button>
+              <button type="button" class="payment-tab" data-payment="credito" role="tab">Cartão de crédito</button>
+              <button type="button" class="payment-tab" data-payment="debito" role="tab">Cartão de débito</button>
+              <button type="button" class="payment-tab" data-payment="boleto" role="tab">Boleto</button>
+            </div>
+
+            <div class="payment-panel" id="payment-pix" role="tabpanel">
+              <div class="pix-box">
+                <div class="pix-qr-placeholder"><i class="fa-solid fa-qrcode"></i></div>
+                <p>O QR Code e o código copia e cola serão gerados aqui após integração com o gateway de pagamento.</p>
+                <p class="pix-timer">Tempo para pagamento: <strong>30:00</strong></p>
+                <p class="pix-status">Status: <span class="status-pill status-pending">Aguardando integração</span></p>
+              </div>
+            </div>
+
+            <div class="payment-panel" id="payment-credito" role="tabpanel" hidden>
+              <form class="card-form">
+                <label>Número do cartão <input type="text" placeholder="0000 0000 0000 0000" inputmode="numeric"></label>
+                <label>Nome impresso no cartão <input type="text" placeholder="Como está no cartão"></label>
+                <div class="card-form-row">
+                  <label>Validade <input type="text" placeholder="MM/AA"></label>
+                  <label>CVV <input type="text" placeholder="000" inputmode="numeric"></label>
+                </div>
+                <label>Parcelamento
+                  <select id="installments-select"></select>
+                </label>
+                <p class="field-note">Formulário apenas demonstrativo — nenhum dado é enviado ou armazenado.</p>
+              </form>
+            </div>
+
+            <div class="payment-panel" id="payment-debito" role="tabpanel" hidden>
+              <form class="card-form">
+                <label>Número do cartão <input type="text" placeholder="0000 0000 0000 0000" inputmode="numeric"></label>
+                <label>Nome impresso no cartão <input type="text" placeholder="Como está no cartão"></label>
+                <div class="card-form-row">
+                  <label>Validade <input type="text" placeholder="MM/AA"></label>
+                  <label>CVV <input type="text" placeholder="000" inputmode="numeric"></label>
+                </div>
+                <p class="field-note">Formulário apenas demonstrativo — nenhum dado é enviado ou armazenado.</p>
+              </form>
+            </div>
+
+            <div class="payment-panel" id="payment-boleto" role="tabpanel" hidden>
+              <div class="boleto-box">
+                <p>O código de barras e o link para impressão do boleto aparecerão aqui após integração com o gateway.</p>
+                <div class="boleto-line-placeholder"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="checkout-summary">
+          <h2>Resumo do pedido</h2>
+          <div id="checkout-items"></div>
+          <div class="summary-row"><span>Subtotal</span><span id="chk-subtotal">R$ 0,00</span></div>
+          <div class="summary-row"><span>Frete</span><span id="chk-shipping">R$ 19,90</span></div>
+          <div class="summary-row summary-total"><span>Total</span><span id="chk-total">R$ 0,00</span></div>
+          <button class="btn btn-primary btn-block" id="place-order-btn">Confirmar pedido</button>
+          <p class="field-note">Pagamento real será processado futuramente por um gateway integrado ao backend PHP.</p>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- MINHA CONTA ---------- -->
+  <section id="view-account" class="view">
+    <div class="simple-page account-page" id="account-page-content"><!-- injetado via JS --></div>
+  </section>
+
+  <!-- ---------- ADMIN ---------- -->
+  <section id="view-admin" class="view">
+    <div class="admin-page" id="admin-page-content"><!-- injetado via JS --></div>
+  </section>
+
+</main>
+
+<!-- ============================================================
+     FOOTER
+============================================================ -->
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <span class="logo footer-logo"><span class="logo-mark">M</span><span class="logo-word">ILISTORE</span></span>
+      <p>Moda para toda a família, com a elegância de uma boutique e a praticidade de um clique.</p>
+      <div class="social-icons">
+        <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+        <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook"></i></a>
+        <a href="#" aria-label="TikTok"><i class="fa-brands fa-tiktok"></i></a>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h3>Institucional</h3>
+      <a href="#">Sobre nós</a>
+      <a href="#">Contato</a>
+      <a href="#">Trocas e devoluções</a>
+      <a href="#">Política de privacidade</a>
+      <a href="#">Termos de uso</a>
+      <a href="#" id="footer-size-guide-link">Guia de tamanhos</a>
+    </div>
+    <div class="footer-col">
+      <h3>Atendimento</h3>
+      <a href="#"><i class="fa-brands fa-whatsapp"></i> (11) 99999-0000</a>
+      <a href="#"><i class="fa-regular fa-envelope"></i> contato@milistore.com.br</a>
+      <p class="footer-hours">Seg. a sex., 9h às 18h</p>
+    </div>
+    <div class="footer-col">
+      <h3>Formas de pagamento</h3>
+      <div class="payment-icons">
+        <span title="PIX"><i class="fa-brands fa-pix"></i></span>
+        <span title="Visa"><i class="fa-brands fa-cc-visa"></i></span>
+        <span title="Mastercard"><i class="fa-brands fa-cc-mastercard"></i></span>
+        <span title="Boleto"><i class="fa-solid fa-barcode"></i></span>
+        <span title="Elo">Elo</span>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>© <span id="footer-year"></span> MILISTORE. Todos os direitos reservados.</p>
+  </div>
+</footer>
+
+<!-- ============================================================
+     MODAL: LOGIN
+============================================================ -->
+<div class="modal" id="login-modal" role="dialog" aria-modal="true" aria-labelledby="login-title" hidden>
+  <div class="modal-card">
+    <button class="icon-btn modal-close" data-close-modal="login-modal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+    <h2 id="login-title">Entrar na sua conta</h2>
+    <form id="login-form">
+      <label>E-mail <input type="email" id="login-email" required></label>
+      <label>Senha
+        <div class="password-field">
+          <input type="password" id="login-password" required>
+          <button type="button" class="toggle-password" data-target="login-password" aria-label="Mostrar senha"><i class="fa-regular fa-eye"></i></button>
+        </div>
+      </label>
+      <div class="form-row-between">
+        <label class="checkbox-label"><input type="checkbox" id="login-remember"> Lembrar de mim</label>
+        <a href="#" id="forgot-password-link">Esqueci minha senha</a>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+      <p class="modal-switch">Não possui conta? <a href="#" id="go-to-register">Cadastre-se</a></p>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: CADASTRO
+============================================================ -->
+<div class="modal" id="register-modal" role="dialog" aria-modal="true" aria-labelledby="register-title" hidden>
+  <div class="modal-card modal-card-wide">
+    <button class="icon-btn modal-close" data-close-modal="register-modal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+    <h2 id="register-title">Criar minha conta</h2>
+    <form id="register-form">
+      <div class="form-grid-2">
+        <label>Nome completo <input type="text" id="reg-nome" required></label>
+        <label>E-mail <input type="email" id="reg-email" required></label>
+        <label>CPF <input type="text" id="reg-cpf" placeholder="000.000.000-00" required></label>
+        <label>Telefone <input type="tel" id="reg-telefone" placeholder="(00) 00000-0000" required></label>
+        <label>Data de nascimento <input type="date" id="reg-nascimento" required></label>
+        <label>Senha
+          <div class="password-field">
+            <input type="password" id="reg-senha" required minlength="6">
+            <button type="button" class="toggle-password" data-target="reg-senha" aria-label="Mostrar senha"><i class="fa-regular fa-eye"></i></button>
+          </div>
+        </label>
+        <label>Confirmar senha <input type="password" id="reg-senha-confirm" required minlength="6"></label>
+      </div>
+      <p class="form-section-label">Endereço (opcional agora, necessário na entrega)</p>
+      <div class="form-grid-2">
+        <label>CEP <input type="text" id="reg-cep"></label>
+        <label>Rua <input type="text" id="reg-rua"></label>
+        <label>Número <input type="text" id="reg-numero"></label>
+        <label>Complemento <input type="text" id="reg-complemento"></label>
+        <label>Bairro <input type="text" id="reg-bairro"></label>
+        <label>Cidade <input type="text" id="reg-cidade"></label>
+        <label>Estado <input type="text" id="reg-estado" maxlength="2"></label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Criar conta</button>
+      <p class="modal-switch">Já possui conta? <a href="#" id="go-to-login">Entrar</a></p>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: GUIA DE TAMANHOS
+============================================================ -->
+<div class="modal" id="size-guide-modal" role="dialog" aria-modal="true" aria-labelledby="size-guide-title" hidden>
+  <div class="modal-card modal-card-wide">
+    <button class="icon-btn modal-close" data-close-modal="size-guide-modal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+    <h2 id="size-guide-title">Descubra seu tamanho</h2>
+    <div class="tabs" role="tablist">
+      <button class="tab-btn active" data-tab="tab-roupa" role="tab">Roupas</button>
+      <button class="tab-btn" data-tab="tab-calcado" role="tab">Calçados</button>
+    </div>
+
+    <div class="tab-panel" id="tab-roupa" role="tabpanel">
+      <form id="size-clothes-form" class="size-form">
+        <label>Altura (cm) <input type="number" id="sg-altura" min="80" max="220" required></label>
+        <label>Peso (kg) <input type="number" id="sg-peso" min="10" max="250" required></label>
+        <label>Idade (opcional) <input type="number" id="sg-idade" min="1" max="120"></label>
+        <label>Modelagem desejada
+          <select id="sg-genero">
+            <option value="feminino">Feminino</option>
+            <option value="masculino">Masculino</option>
+            <option value="infantil">Infantil</option>
+          </select>
+        </label>
+        <button type="submit" class="btn btn-primary btn-block">Calcular tamanho</button>
+      </form>
+      <div class="size-result" id="size-clothes-result" hidden></div>
+      <p class="field-note">As medidas são apenas uma recomendação e podem variar conforme a modelagem da peça.</p>
+
+      <table class="size-table">
+        <caption>Tabela de medidas (cm)</caption>
+        <thead><tr><th>Tamanho</th><th>Peito</th><th>Cintura</th><th>Quadril</th></tr></thead>
+        <tbody>
+          <tr><td>PP</td><td>82–86</td><td>62–66</td><td>88–92</td></tr>
+          <tr><td>P</td><td>87–91</td><td>67–71</td><td>93–97</td></tr>
+          <tr><td>M</td><td>92–97</td><td>72–77</td><td>98–103</td></tr>
+          <tr><td>G</td><td>98–104</td><td>78–84</td><td>104–110</td></tr>
+          <tr><td>GG</td><td>105–112</td><td>85–92</td><td>111–118</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tab-panel" id="tab-calcado" role="tabpanel" hidden>
+      <form id="size-shoes-form" class="size-form">
+        <label>Comprimento do pé (cm) <input type="number" id="sg-pe" min="15" max="35" step="0.5" required></label>
+        <button type="submit" class="btn btn-primary btn-block">Calcular numeração</button>
+      </form>
+      <div class="size-result" id="size-shoes-result" hidden></div>
+      <p class="field-note">As medidas podem variar conforme fabricante e modelo do calçado.</p>
+
+      <table class="size-table">
+        <caption>Conversão de tamanho</caption>
+        <thead><tr><th>Pé (cm)</th><th>Numeração BR</th></tr></thead>
+        <tbody>
+          <tr><td>23 cm</td><td>35</td></tr>
+          <tr><td>24 cm</td><td>36/37</td></tr>
+          <tr><td>25 cm</td><td>38</td></tr>
+          <tr><td>26 cm</td><td>39/40</td></tr>
+          <tr><td>27 cm</td><td>41/42</td></tr>
+          <tr><td>28 cm</td><td>43</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: LOGIN ADMIN
+============================================================ -->
+<div class="modal" id="admin-login-modal" role="dialog" aria-modal="true" aria-labelledby="admin-login-title" hidden>
+  <div class="modal-card">
+    <button class="icon-btn modal-close" data-close-modal="admin-login-modal" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+    <h2 id="admin-login-title">Acesso administrativo</h2>
+    <form id="admin-login-form">
+      <label>E-mail <input type="email" id="admin-user" placeholder="admin@milistore.com.br" required></label>
+      <label>Senha <input type="password" id="admin-pass" required></label>
+      <p class="field-note">Use o e-mail e senha de uma conta com permissão de administrador.</p>
+      <button type="submit" class="btn btn-primary btn-block">Entrar no painel</button>
+    </form>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

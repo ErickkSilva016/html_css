@@ -1,0 +1,5 @@
+node_modules/
+.env.example
+database/milistore.db
+database/milistore.db-shm
+database/milistore.db-wal
