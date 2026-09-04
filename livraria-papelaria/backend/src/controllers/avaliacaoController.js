@@ -1,9 +1,23 @@
 // Deixar uma avaliação no produto
 exports.criarAvaliacao = async (req, res) => {
   try {
-    const { produto_id, comentario, nota, foi_comprado } = req.body;
-    // usuario_id vem do token (req.user), nunca do body: mesma lógica do diário.
+    const { produto_id, comentario, nota } = req.body;
+    // usuario_id vem do token (req.user), nunca do body.
     const usuario_id = req.user.id;
+
+    // foi_comprado não é mais confiado do cliente: verificamos se existe
+    // pedido entregue desse usuário com esse produto. Assim a separação
+    // "quem comprou" vs "quem não comprou" é real, não autodeclarada.
+    const { data: pedidoItem, error: pedidoError } = await req.supabase
+      .from('pedido_itens')
+      .select('id, pedidos!inner(usuario_id, status)')
+      .eq('produto_id', produto_id)
+      .eq('pedidos.usuario_id', usuario_id)
+      .eq('pedidos.status', 'entregue')
+      .limit(1)
+      .maybeSingle();
+    if (pedidoError) throw pedidoError;
+    const foi_comprado = Boolean(pedidoItem);
 
     const { data, error } = await req.supabase
       .from('avaliacoes')
@@ -13,7 +27,7 @@ exports.criarAvaliacao = async (req, res) => {
           usuario_id,
           comentario,
           nota,
-          foi_comprado: foi_comprado || false, // Separa compradores de não compradores
+          foi_comprado,
         },
       ])
       .select();
@@ -26,7 +40,7 @@ exports.criarAvaliacao = async (req, res) => {
   }
 };
 
-// Listar avaliações de um produto
+// Listar avaliações de um produto (já separáveis por foi_comprado no front)
 exports.listarAvaliacoesDoProduto = async (req, res) => {
   try {
     const { produto_id } = req.params;
@@ -39,6 +53,17 @@ exports.listarAvaliacoesDoProduto = async (req, res) => {
     if (error) throw error;
 
     return res.status(200).json(data);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+// Moderação: apagar avaliação. Só dona/admin (mesmo critério do chat).
+exports.removerAvaliacao = async (req, res) => {
+  try {
+    const { error } = await req.supabase.from('avaliacoes').delete().eq('id', req.params.id);
+    if (error) throw error;
+    return res.status(200).json({ message: 'Avaliação removida com sucesso!' });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }

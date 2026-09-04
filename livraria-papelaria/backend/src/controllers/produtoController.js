@@ -36,13 +36,12 @@ exports.buscarProdutoPorId = async (req, res) => {
   }
 };
 
-// Criar produto ou combo. Funcionários não controlam o estoque.
+// Criar produto ou combo. Restrito a dona/admin (ver produtoRoutes.js) —
+// o funcionário não cria nem apaga produto, só mexe em promoção.
 exports.criarProduto = async (req, res) => {
   try {
-    const { titulo, descricao, preco, categoria, genero, amostra_primeira_pagina, is_combo, imagem, promocao, preco_antigo } = req.body;
-    const isOwner = ['dona', 'admin'].includes(req.profile.tipo_usuario);
-    const produto = { titulo, descricao, preco, categoria, genero, amostra_primeira_pagina, is_combo, imagem, promocao, preco_antigo };
-    if (isOwner) produto.estoque = Number(req.body.estoque || 0);
+    const { titulo, descricao, preco, categoria, genero, amostra_primeira_pagina, is_combo, imagem, promocao, preco_antigo, estoque } = req.body;
+    const produto = { titulo, descricao, preco, categoria, genero, amostra_primeira_pagina, is_combo, imagem, promocao, preco_antigo, estoque: Number(estoque || 0) };
 
     const { data, error } = await req.supabase
       .from('produtos')
@@ -57,14 +56,14 @@ exports.criarProduto = async (req, res) => {
   }
 };
 
+// Edição completa do produto. Restrito a dona/admin (ver produtoRoutes.js).
+// Para promoção, o funcionário usa PATCH /produtos/:id/promocao.
 exports.editarProduto = async (req, res) => {
   try {
     const { id } = req.params;
-    const allowedFields = ['titulo', 'descricao', 'preco', 'categoria', 'genero', 'amostra_primeira_pagina', 'is_combo', 'imagem', 'promocao', 'preco_antigo'];
+    const allowedFields = ['titulo', 'descricao', 'preco', 'categoria', 'genero', 'amostra_primeira_pagina', 'is_combo', 'imagem', 'promocao', 'preco_antigo', 'estoque'];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([key, value]) => allowedFields.includes(key) && value !== undefined));
-    if (['dona', 'admin'].includes(req.profile.tipo_usuario) && req.body.estoque !== undefined) {
-      updates.estoque = Number(req.body.estoque);
-    }
+    if (updates.estoque !== undefined) updates.estoque = Number(updates.estoque);
     if (!Object.keys(updates).length) return res.status(400).json({ error: 'Nenhum campo válido foi informado.' });
 
     const { data, error } = await req.supabase.from('produtos').update(updates).eq('id', id).select().single();
@@ -75,11 +74,74 @@ exports.editarProduto = async (req, res) => {
   }
 };
 
+// Único caminho de escrita liberado para o funcionário: só promoção e
+// preço antigo (pra exibir o "de/por"). Qualquer outro campo enviado no
+// corpo é ignorado aqui — e, mesmo que alguém tente burlar isso, o
+// trigger prevent_staff_full_edit no banco bloqueia a alteração.
+exports.atualizarPromocao = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { promocao, preco_antigo } = req.body;
+    if (promocao === undefined) return res.status(400).json({ error: 'Informe o campo "promocao" (true ou false).' });
+
+    const updates = { promocao: Boolean(promocao) };
+    updates.preco_antigo = promocao ? (preco_antigo != null ? Number(preco_antigo) : null) : null;
+
+    const { data, error } = await req.supabase.from('produtos').update(updates).eq('id', id).select().single();
+    if (error) throw error;
+    return res.status(200).json({ message: 'Promoção atualizada com sucesso!', produto: data });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+// Remover produto. Restrito a dona/admin (ver produtoRoutes.js).
 exports.removerProduto = async (req, res) => {
   try {
     const { error } = await req.supabase.from('produtos').delete().eq('id', req.params.id);
     if (error) throw error;
     return res.status(200).json({ message: 'Produto removido com sucesso!' });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+// Itens que compõem um combo/kit (ex: livro + marca página + post-it +
+// caneta), permitindo que cada item também seja comprado separadamente.
+exports.listarItensCombo = async (req, res) => {
+  try {
+    const { data, error } = await req.supabase
+      .from('combo_itens')
+      .select('id, quantidade, produto:produto_id (id, titulo, preco, categoria, imagem)')
+      .eq('combo_id', req.params.id);
+    if (error) throw error;
+    return res.status(200).json(data);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+// Define a composição do combo (substitui a lista anterior). Restrito a
+// dona/admin — é estrutura de produto, não "promoção".
+exports.definirItensCombo = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const itens = Array.isArray(req.body.itens) ? req.body.itens : [];
+
+    const { error: deleteError } = await req.supabase.from('combo_itens').delete().eq('combo_id', id);
+    if (deleteError) throw deleteError;
+
+    if (itens.length) {
+      const rows = itens
+        .filter(item => item && item.produto_id)
+        .map(item => ({ combo_id: id, produto_id: item.produto_id, quantidade: Number(item.quantidade || 1) }));
+      if (rows.length) {
+        const { error: insertError } = await req.supabase.from('combo_itens').insert(rows);
+        if (insertError) throw insertError;
+      }
+    }
+
+    return res.status(200).json({ message: 'Composição do combo atualizada com sucesso!' });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
