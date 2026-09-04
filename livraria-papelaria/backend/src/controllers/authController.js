@@ -78,7 +78,8 @@ exports.login = async (req, res) => {
     if (error) throw error;
 
     // Buscar o perfil completo (para saber se é dono, funcionário ou vip)
-    const { data: profile } = await supabase
+    const profileClient = supabaseAdmin || supabase;
+    const { data: profile } = await profileClient
       .from('profiles')
       .select('*')
       .eq('id', data.user.id)

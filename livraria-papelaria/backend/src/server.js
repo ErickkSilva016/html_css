@@ -10,6 +10,7 @@ const authRoutes = require('./routes/authRoutes');
 const diarioRoutes = require('./routes/diarioRoutes');
 const avaliacaoRoutes = require('./routes/avaliacaoRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/diario', diarioRoutes);
 app.use('/api/avaliacoes', avaliacaoRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Rota Base
 app.get('/', (req, res) => {

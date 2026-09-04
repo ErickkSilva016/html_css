@@ -6,16 +6,8 @@ exports.enviarMensagem = async (req, res) => {
     const usuario_id = req.user.id;
 
     // Se for notícias VIP, verifica se o usuário é a Dona
-    if (tipo_chat === 'vip_noticias') {
-      const { data: perfil } = await req.supabase
-        .from('profiles')
-        .select('tipo_usuario')
-        .eq('id', usuario_id)
-        .single();
-
-      if (!perfil || perfil.tipo_usuario !== 'dona') {
-        return res.status(403).json({ error: 'Apenas a dona pode enviar notícias no canal VIP!' });
-      }
+    if (tipo_chat === 'vip_noticias' && !['dona', 'admin'].includes(req.profile.tipo_usuario)) {
+      return res.status(403).json({ error: 'Apenas a dona pode enviar notícias no canal VIP!' });
     }
 
     const { data, error } = await req.supabase
