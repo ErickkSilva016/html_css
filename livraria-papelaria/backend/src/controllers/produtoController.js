@@ -41,7 +41,14 @@ exports.buscarProdutoPorId = async (req, res) => {
 exports.criarProduto = async (req, res) => {
   try {
     const { titulo, descricao, preco, categoria, genero, amostra_primeira_pagina, is_combo, imagem, promocao, preco_antigo, estoque } = req.body;
-    const produto = { titulo, descricao, preco, categoria, genero, amostra_primeira_pagina, is_combo, imagem, promocao, preco_antigo, estoque: Number(estoque || 0) };
+    const produto = {
+      titulo, descricao, preco, categoria, genero, amostra_primeira_pagina,
+      is_combo: Boolean(is_combo),
+      imagem,
+      promocao: Boolean(promocao),
+      preco_antigo: promocao ? Number(preco_antigo) : null,
+      estoque: Number(estoque || 0),
+    };
 
     const { data, error } = await req.supabase
       .from('produtos')
