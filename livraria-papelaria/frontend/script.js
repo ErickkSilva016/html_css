@@ -141,6 +141,7 @@ async function handleAdminSubmit(event) {
     else if (form.dataset.stockEdit) { const body = { estoque: Number(new FormData(form).get('estoque')) }; await apiRequest(`/admin/estoque/${encodeURIComponent(form.dataset.stockEdit)}`, { method: 'PATCH', body: JSON.stringify(body) }); toast('Estoque atualizado com sucesso.'); }
     else return;
     await loadAdminData();
+    await loadProducts();
   } catch (error) { console.error('Falha em operação administrativa.', error); toast(error.message || 'Operação não realizada.'); }
 }
 async function handleAdminClick(event) {
@@ -149,7 +150,7 @@ async function handleAdminClick(event) {
   const messageRemove = event.target.closest('[data-message-remove]'); if (messageRemove) { try { await apiRequest(`/chat/${encodeURIComponent(messageRemove.dataset.messageRemove)}`, { method: 'DELETE' }); toast('Mensagem removida.'); await loadChat(); } catch (error) { toast(error.message || 'Não foi possível remover a mensagem.'); } return; }
   const button = event.target.closest('[data-admin-logout], [data-product-remove], [data-employee-remove]'); if (!button) return;
   if (button.dataset.adminLogout !== undefined) { state.user = null; localStorage.removeItem(STORAGE_KEYS.user); localStorage.removeItem(STORAGE_KEYS.session); $('#adminLoginForm').reset(); updateAccount(); toast('Sessão administrativa encerrada.'); location.hash = '#home'; return; }
-  try { if (button.dataset.productRemove) { await apiRequest(`/produtos/${encodeURIComponent(button.dataset.productRemove)}`, { method: 'DELETE' }); toast('Produto removido com sucesso.'); } else if (button.dataset.employeeRemove) { await apiRequest(`/admin/funcionarios/${encodeURIComponent(button.dataset.employeeRemove)}`, { method: 'DELETE' }); toast('Funcionário removido com sucesso.'); } await loadAdminData(); } catch (error) { console.error('Falha em operação administrativa.', error); toast(error.message || 'Operação não realizada.'); }
+  try { if (button.dataset.productRemove) { await apiRequest(`/produtos/${encodeURIComponent(button.dataset.productRemove)}`, { method: 'DELETE' }); toast('Produto removido com sucesso.'); } else if (button.dataset.employeeRemove) { await apiRequest(`/admin/funcionarios/${encodeURIComponent(button.dataset.employeeRemove)}`, { method: 'DELETE' }); toast('Funcionário removido com sucesso.'); } await loadAdminData(); await loadProducts(); } catch (error) { console.error('Falha em operação administrativa.', error); toast(error.message || 'Operação não realizada.'); }
 }
 async function handleAdminChange(event) {
   const roleSelect = event.target.closest('[data-role-edit]'); if (roleSelect) { try { await apiRequest(`/admin/funcionarios/${encodeURIComponent(roleSelect.dataset.roleEdit)}/permissao`, { method: 'PATCH', body: JSON.stringify({ tipo_usuario: roleSelect.value }) }); toast('Permissão atualizada com sucesso.'); await loadAdminData(); } catch (error) { console.error('Falha em operação administrativa.', error); toast(error.message || 'Operação não realizada.'); } return; }
