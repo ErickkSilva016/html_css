@@ -31,6 +31,7 @@ exports.cadastrar = async (req, res) => {
       .insert([
         {
           id: authData.user.id,
+          email,
           nome,
           tipo_usuario: 'cliente',
           plano_vip: plano_vip || 'nenhum',         // 'nenhum', 'basico', 'medio', 'avancado'

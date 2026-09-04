@@ -1,6 +1,10 @@
+const path = require('node:path');
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+const dotenv = require('dotenv');
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config();
 
 const { identificarUsuario } = require('./middlewares/auth');
 
@@ -16,7 +20,7 @@ const pedidoRoutes = require('./routes/pedidoRoutes');
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '8mb' }));
 
 // Lê o token do usuário (se houver) e prepara req.user / req.supabase
 // para todas as rotas abaixo, respeitando RLS em vez de ignorá-la.
@@ -38,5 +42,5 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`Servidor rodando na porta ${PORT}`);
 });
