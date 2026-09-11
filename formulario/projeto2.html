@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projeto2</title>
+</head>
+<body>
+    <h1>Finalizar Compra</h1>
+    <form method="post">
+        <fieldset>
+            <legend>Endereço de Entrega</legend>
+            <label for="nome">Nome do Destinatário</label>
+            <input type="text" id="nome" name="nome" required><br><br>
+
+            <label for="cep">CEP</label>
+            <input type="number" id="cep" name="cep" placeholder="0000-00" required><br><br>
+
+            <label for="rua">Rua</label>
+            <input type="text" id="rua" name="rua" required><br><br>
+
+            <label for="ncasa">Número</label>
+            <input type="number" id="ncasa" name="ncasa" required><br><br>
+
+            <label for="complemento">Complemento</label>
+            <input type="text" id="complemento" name="complemento" required>
+        </fieldset>
+
+
+        
+        <fieldset>
+            <legend>Opções de Entrega</legend>
+            <label for="period_entrega">Periodo de Entrega</label>
+            <select id="period_entrega" name="Entrega">
+             <option value="manha">Manhã (08h~12h)</option> 
+             <option value="tarde">Tarde (13h~18h)</option> 
+             <option value="noite">Noite (18h~22h)</option> 
+            </select>
+
+            <p>Instruções de Entrega:</p>
+            
+            <input type="radio" id="instrucoes" name="instrucoes" value="portaria">
+            <label for="instrucoes">Deixar na Portaria</label><br>
+
+            <input type="radio" id="entregar" name="instrucoes" value="mãos">
+            <label for="entregar">Entregar em mãos</label><br>
+
+            <input type="radio" id="ligar" name="instrucoes" value="ligar">
+            <label for="ligar">Ligar ao chegar</label><br><br>
+
+            <label for="desconto">Cupom de Desconto</label>
+            <input type="text" id="desconto" name="desconto"><br><br>
+
+            <input type="checkbox" id="zap" name="zap" value="zap">
+            <label for="zap">Receber Ofertas Por WhatsApp</label>
+        </fieldset>
+        <button type="submit">Finzalizar Compra</button>
+    </form>
+</body>
+</html>
