@@ -74,7 +74,7 @@ async function removeUploadedImage(filePath) {
 exports.listarProdutos = async (req, res) => {
   try {
     const { categoria } = req.query; // Permite filtrar com ?categoria=livro ou ?categoria=papelaria
-    let query = req.supabase.from('produtos').select('*');
+    let query = req.supabase.from('produtos').select('*').eq('disponivel', true);
 
     if (categoria) {
       query = query.eq('categoria', categoria);
@@ -170,7 +170,7 @@ exports.editarProduto = async (req, res) => {
   try {
     const { id } = req.params;
     const { imagem_data, ...payload } = req.body;
-    const allowedFields = ['titulo', 'descricao', 'preco', 'categoria', 'genero', 'amostra_primeira_pagina', 'is_combo', 'imagem', 'promocao', 'preco_antigo', 'estoque'];
+    const allowedFields = ['titulo', 'descricao', 'preco', 'categoria', 'genero', 'amostra_primeira_pagina', 'is_combo', 'imagem', 'promocao', 'preco_antigo', 'estoque', 'disponivel'];
     const updates = Object.fromEntries(Object.entries(payload).filter(([key, value]) => allowedFields.includes(key) && value !== undefined));
 
     if (imagem_data) {
@@ -213,10 +213,24 @@ exports.atualizarPromocao = async (req, res) => {
 };
 
 // Remover produto. Restrito a dona/admin (ver produtoRoutes.js).
+// Se o produto já apareceu em algum pedido, apagar de vez quebraria o
+// histórico (foreign key pedido_itens_produto_id_fkey). Nesse caso, em vez
+// de falhar, marcamos o produto como indisponível: ele some da loja mas
+// os pedidos antigos continuam intactos.
 exports.removerProduto = async (req, res) => {
   try {
     const { error } = await req.supabase.from('produtos').delete().eq('id', req.params.id);
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23503') {
+        const { error: softError } = await req.supabase
+          .from('produtos')
+          .update({ disponivel: false })
+          .eq('id', req.params.id);
+        if (softError) throw softError;
+        return res.status(200).json({ message: 'Este produto já foi vendido em algum pedido, então não pode ser apagado. Ele foi marcado como indisponível e não aparece mais na loja.' });
+      }
+      throw error;
+    }
     return res.status(200).json({ message: 'Produto removido com sucesso!' });
   } catch (error) {
     return res.status(500).json({ error: error.message });

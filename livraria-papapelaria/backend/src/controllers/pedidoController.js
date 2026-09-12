@@ -2,13 +2,25 @@
 // (a) o funcionário conversar com quem pediu o produto, e (b) o campo
 // foi_comprado das avaliações deixar de ser autodeclarado pelo cliente.
 
+// Formas de pagamento aceitas na nova etapa de pagamento (fictícia, sem
+// gateway real). Mantido em array pra validar sem depender só do check
+// constraint do banco.
+const FORMAS_PAGAMENTO_VALIDAS = ['debito', 'credito', 'pix'];
+
 // Cliente cria um pedido a partir do carrinho.
-// body: { itens: [{ produto_id, quantidade, personalizacao? }] }
+// body: { itens: [{ produto_id, quantidade, personalizacao? }], forma_pagamento? }
 exports.criarPedido = async (req, res) => {
   try {
     const usuario_id = req.user.id; // nunca confia no body pra isso
     const itensBody = Array.isArray(req.body.itens) ? req.body.itens : [];
     if (!itensBody.length) return res.status(400).json({ error: 'O pedido precisa ter ao menos um item.' });
+
+    // Forma de pagamento é opcional (compatibilidade com fluxos antigos),
+    // mas se vier, precisa ser um dos valores aceitos.
+    const { forma_pagamento } = req.body;
+    if (forma_pagamento !== undefined && forma_pagamento !== null && !FORMAS_PAGAMENTO_VALIDAS.includes(forma_pagamento)) {
+      return res.status(400).json({ error: 'Forma de pagamento inválida. Use "debito", "credito" ou "pix".' });
+    }
 
     const produtoIds = [...new Set(itensBody.map(item => item.produto_id).filter(Boolean))];
     const { data: produtos, error: produtosError } = await req.supabase
@@ -23,9 +35,12 @@ exports.criarPedido = async (req, res) => {
 
     const total = itensValidos.reduce((soma, item) => soma + precoPorId[item.produto_id] * Number(item.quantidade || 1), 0);
 
+    const novoPedido = { usuario_id, total };
+    if (forma_pagamento) novoPedido.forma_pagamento = forma_pagamento;
+
     const { data: pedido, error: pedidoError } = await req.supabase
       .from('pedidos')
-      .insert([{ usuario_id, total }])
+      .insert([novoPedido])
       .select()
       .single();
     if (pedidoError) throw pedidoError;

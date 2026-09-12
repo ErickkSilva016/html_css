@@ -55,7 +55,67 @@ function addToCart(id, customization = null) { const product = findProduct(id); 
 function renderCart() { const count = state.cart.reduce((total, item) => total + item.quantity, 0); $('#cartCount').textContent = count; $('#cartItems').innerHTML = state.cart.length ? state.cart.map(item => `<div class="cart-line"><div><h3>${escapeHtml(item.product.titulo)}</h3><p>${item.customization ? `Personalizado: ${escapeHtml(Object.values(item.customization).filter(Boolean).join(', '))}` : 'Edição Gutenberg'}</p><div class="quantity"><button data-quantity="-1" data-key="${escapeHtml(item.key)}">−</button><span>${item.quantity}</span><button data-quantity="1" data-key="${escapeHtml(item.key)}">+</button><button class="remove-item" data-remove="${escapeHtml(item.key)}">Remover</button></div></div><strong>${formatPrice(item.product.preco * item.quantity)}</strong></div>`).join('') : '<div class="empty-state">Sua sacola está esperando uma boa história.</div>'; $('#cartTotal').textContent = formatPrice(state.cart.reduce((total, item) => total + item.product.preco * item.quantity, 0)); }
 function openCart() { $('#cartDrawer').classList.add('open'); $('#drawerOverlay').classList.add('open'); $('#cartDrawer').setAttribute('aria-hidden', 'false'); }
 function closeCart() { $('#cartDrawer').classList.remove('open'); $('#drawerOverlay').classList.remove('open'); $('#cartDrawer').setAttribute('aria-hidden', 'true'); }
-async function checkout() { if (!state.user?.id) { toast('Entre na sua conta para fechar o pedido.'); location.hash = '#login'; closeCart(); return; } if (!state.cart.length) { toast('Sua sacola está vazia.'); return; } const itens = state.cart.filter(item => !String(item.product.id).startsWith('fallback-')).map(item => ({ produto_id: item.product.id, quantidade: item.quantity, personalizacao: item.customization || null })); if (!itens.length) { toast('Os itens da sacola são de demonstração e ainda não existem na API.'); return; } try { const data = await apiRequest('/pedidos', { method: 'POST', body: JSON.stringify({ itens }) }); state.cart = []; saveStorage(STORAGE_KEYS.cart, state.cart); renderCart(); closeCart(); toast('Pedido realizado com sucesso!'); location.hash = '#perfil'; await loadMeusPedidos(); } catch (error) { console.error('Falha ao fechar pedido.', error); toast(error.message || 'Não foi possível fechar o pedido.'); } }
+// ---------- Pagamento (etapa entre carrinho e criação do pedido) ----------
+// Pagamento fictício: nenhum gateway real, nenhuma cobrança real, nenhum
+// dado de cartão é armazenado. Serve apenas para demonstrar o fluxo.
+const PAYMENT_LABELS = { debito: 'Cartão de débito', credito: 'Cartão de crédito', pix: 'PIX' };
+state.pendingPaymentMethod = null;
+
+function checkout() {
+  if (!state.user?.id) { toast('Entre na sua conta para fechar o pedido.'); location.hash = '#login'; closeCart(); return; }
+  if (!state.cart.length) { toast('Sua sacola está vazia.'); return; }
+  const itens = state.cart.filter(item => !String(item.product.id).startsWith('fallback-')).map(item => ({ produto_id: item.product.id, quantidade: item.quantity, personalizacao: item.customization || null }));
+  if (!itens.length) { toast('Os itens da sacola são de demonstração e ainda não existem na API.'); return; }
+  openPaymentModal();
+}
+
+function openPaymentModal() {
+  state.pendingPaymentMethod = null;
+  $('#paymentTotalLine').textContent = `Total do pedido: ${formatPrice(state.cart.reduce((total, item) => total + item.product.preco * item.quantity, 0))}`;
+  $$('.payment-option').forEach(option => option.classList.remove('selected'));
+  $('#paymentDetail').hidden = true;
+  $('#paymentDetail').innerHTML = '';
+  $('#confirmPaymentButton').disabled = true;
+  $('#confirmPaymentButton').textContent = 'Confirmar pedido';
+  closeCart();
+  $('#paymentModal').showModal();
+}
+
+function selectPaymentMethod(method) {
+  state.pendingPaymentMethod = method;
+  $$('.payment-option').forEach(option => option.classList.toggle('selected', option.dataset.paymentMethod === method));
+  const detail = $('#paymentDetail');
+  detail.hidden = false;
+  if (method === 'pix') {
+    detail.innerHTML = '<p>Pagamento via PIX</p><div class="payment-qr"><span>QR CODE FICTÍCIO</span></div><p>Escaneie o QR Code para simular o pagamento. Esta é apenas uma demonstração — nenhuma cobrança real é gerada.</p>';
+  } else {
+    detail.innerHTML = `<p class="payment-confirmation">Forma de pagamento selecionada: ${escapeHtml(PAYMENT_LABELS[method])}</p><p>Nenhum dado de cartão é solicitado ou armazenado nesta simulação.</p>`;
+  }
+  $('#confirmPaymentButton').disabled = false;
+}
+
+async function confirmPayment() {
+  if (!state.pendingPaymentMethod) return;
+  const button = $('#confirmPaymentButton');
+  button.disabled = true;
+  button.textContent = 'Confirmando...';
+  const itens = state.cart.filter(item => !String(item.product.id).startsWith('fallback-')).map(item => ({ produto_id: item.product.id, quantidade: item.quantity, personalizacao: item.customization || null }));
+  try {
+    await apiRequest('/pedidos', { method: 'POST', body: JSON.stringify({ itens, forma_pagamento: state.pendingPaymentMethod }) });
+    state.cart = [];
+    saveStorage(STORAGE_KEYS.cart, state.cart);
+    renderCart();
+    $('#paymentModal').close();
+    toast('Pedido realizado com sucesso!');
+    location.hash = '#perfil';
+    await loadMeusPedidos();
+  } catch (error) {
+    console.error('Falha ao fechar pedido.', error);
+    toast(error.message || 'Não foi possível fechar o pedido.');
+    button.disabled = false;
+    button.textContent = 'Confirmar pedido';
+  }
+}
 
 // ---------- Autenticação ----------
 async function submitLogin(event) { event.preventDefault(); try { const data = await apiRequest('/auth/login', { method: 'POST', body: JSON.stringify({ email: $('#loginEmail').value, password: $('#loginPassword').value }) }); state.user = data.perfil ? { ...data.perfil, id: data.session?.user?.id || data.user?.id } : data.user; saveStorage(STORAGE_KEYS.user, state.user); if (data.session) saveStorage(STORAGE_KEYS.session, data.session); updateAccount(); toast('Login realizado com sucesso.'); location.hash = '#perfil'; } catch (error) { console.error('Falha no login.', error); toast(error.message || 'Não foi possível realizar o login.'); } }
@@ -66,12 +126,12 @@ function updateAccount() { $('#accountLink').textContent = state.user ? (state.u
 // ---------- Comunidade / Chat ----------
 async function loadChat(type = state.activeChat) { state.activeChat = type; $('#chatForm').hidden = type === 'vip_noticias' && !isOwnerUser(); $('#messageList').innerHTML = '<div class="empty-state">Carregando conversa...</div>'; try { const data = await apiRequest(`/chat/${type}`); state.messages = Array.isArray(data) ? data : []; renderMessages(); } catch (error) { console.error('Falha ao carregar chat.', error); $('#messageList').innerHTML = '<div class="empty-state">Não foi possível carregar esta conversa agora.</div>'; } }
 function renderMessages() { $('#messageList').innerHTML = state.messages.length ? state.messages.map(message => `<div class="message" data-message-id="${escapeHtml(message.id)}"><strong>${escapeHtml(message.profiles?.nome || 'Leitor Gutenberg')}</strong><time>${formatDate(message.created_at)}</time><p>${escapeHtml(message.conteudo)}${isOwnerUser() ? ` <button type="button" class="remove-item" data-message-remove="${escapeHtml(message.id)}">Remover</button>` : ''}</p></div>`).join('') : '<div class="empty-state">Ainda não há mensagens. Comece a conversa.</div>'; }
-async function submitMessage(event) { event.preventDefault(); if (!state.user?.id) { toast('Entre na sua conta para conversar.'); location.hash = '#login'; return; } try { await apiRequest('/chat/enviar', { method: 'POST', body: JSON.stringify({ conteudo: $('#chatMessage').value, tipo_chat: state.activeChat }) }); $('#chatMessage').value = ''; await loadChat(); } catch (error) { console.error('Falha ao enviar mensagem.', error); toast(error.message || 'Não foi possível enviar a mensagem.'); } }
+async function submitMessage(event) { event.preventDefault(); if (!state.user?.id) { toast('Entre na sua conta para conversar.'); location.hash = '#login'; return; } const input = $('#chatMessage'); const conteudo = input.value; if (!conteudo.trim()) return; const button = event.target.querySelector('button'); if (button) button.disabled = true; try { await apiRequest('/chat/enviar', { method: 'POST', body: JSON.stringify({ conteudo, tipo_chat: state.activeChat }) }); input.value = ''; await loadChat(); } catch (error) { console.error('Falha ao enviar mensagem.', error); toast(error.message || 'Não foi possível enviar a mensagem. Tente novamente.'); } finally { if (button) button.disabled = false; } }
 
 // ---------- Chat de pedido (funcionário fala com quem pediu) ----------
 async function openPedidoChat(pedidoId, titulo) { state.activePedidoId = pedidoId; $('#orderChatTitle').textContent = titulo || 'Pedido'; $('#orderMessageList').innerHTML = '<div class="empty-state">Carregando conversa...</div>'; $('#orderChatModal').showModal(); try { const data = await apiRequest(`/chat/pedido?pedido_id=${encodeURIComponent(pedidoId)}`); renderOrderMessages(Array.isArray(data) ? data : []); } catch (error) { console.error('Falha ao carregar conversa do pedido.', error); $('#orderMessageList').innerHTML = '<div class="empty-state">Não foi possível carregar esta conversa.</div>'; } }
 function renderOrderMessages(messages) { $('#orderMessageList').innerHTML = messages.length ? messages.map(message => `<div class="message"><strong>${escapeHtml(message.profiles?.nome || 'Leitor Gutenberg')}</strong><time>${formatDate(message.created_at)}</time><p>${escapeHtml(message.conteudo)}</p></div>`).join('') : '<div class="empty-state">Ainda não há mensagens sobre este pedido.</div>'; }
-async function submitOrderMessage(event) { event.preventDefault(); if (!state.activePedidoId) return; try { await apiRequest('/chat/enviar', { method: 'POST', body: JSON.stringify({ conteudo: $('#orderChatMessage').value, tipo_chat: 'pedido', pedido_id: state.activePedidoId }) }); $('#orderChatMessage').value = ''; const data = await apiRequest(`/chat/pedido?pedido_id=${encodeURIComponent(state.activePedidoId)}`); renderOrderMessages(Array.isArray(data) ? data : []); } catch (error) { console.error('Falha ao enviar mensagem do pedido.', error); toast(error.message || 'Não foi possível enviar a mensagem.'); } }
+async function submitOrderMessage(event) { event.preventDefault(); if (!state.activePedidoId) return; const input = $('#orderChatMessage'); const conteudo = input.value; if (!conteudo.trim()) return; const button = event.target.querySelector('button'); if (button) button.disabled = true; try { await apiRequest('/chat/enviar', { method: 'POST', body: JSON.stringify({ conteudo, tipo_chat: 'pedido', pedido_id: state.activePedidoId }) }); input.value = ''; const data = await apiRequest(`/chat/pedido?pedido_id=${encodeURIComponent(state.activePedidoId)}`); renderOrderMessages(Array.isArray(data) ? data : []); } catch (error) { console.error('Falha ao enviar mensagem do pedido.', error); toast(error.message || 'Não foi possível enviar a mensagem. Tente novamente.'); } finally { if (button) button.disabled = false; } }
 
 // ---------- Meus pedidos (cliente) ----------
 async function loadMeusPedidos() { if (!state.user?.id) return; try { state.meusPedidos = await apiRequest('/pedidos/meus'); renderMeusPedidos(); } catch (error) { console.error('Falha ao carregar pedidos.', error); } }
@@ -109,7 +169,7 @@ function renderAdmin() {
   let html = `<div class="admin-tools"><div class="admin-list"><h3>Promoções</h3><form class="form-card" id="promoForm"><label>Produto<select name="produto_id" id="promoProductSelect"></select></label><label class="check-line"><input type="checkbox" name="promocao" id="promoActive"> Em promoção</label><label>Preço antigo (De:)<input name="preco_antigo" id="promoOldPrice" type="number" step="0.01" min="0"></label><button class="button primary" type="submit">Salvar promoção</button></form><p class="muted" style="font-size:11px">Funcionário só altera promoção — não cria, edita ou apaga produtos.</p></div><div class="admin-list"><h3>Pedidos para atender</h3><div id="adminOrdersList"><div class="empty-state">Carregando pedidos...</div></div></div></div>`;
 
   if (owner) {
-    html += `<div class="admin-tools"><form class="form-card" id="adminProductForm"><h3>Adicionar produto</h3><label>Título<input name="titulo" required></label><label>Descrição<textarea name="descricao" rows="3"></textarea></label><div class="form-row"><label>Preço<input name="preco" type="number" step="0.01" min="0" required></label><label>Categoria<select name="categoria"><option value="livro">Livro</option><option value="papelaria">Papelaria</option></select></label></div><label>Gênero<input name="genero"></label><label>Imagem por URL (opcional)<input name="imagem" type="url" placeholder="https://..."></label><label>Ou enviar imagem do computador<input name="imagem_arquivo" type="file" accept="image/jpeg,image/png,image/webp,image/gif"></label><p class="muted" style="font-size:11px">JPG, PNG, WEBP ou GIF até 4 MB. Se enviar um ficheiro, ele terá prioridade sobre a URL.</p><label>Estoque<input name="estoque" type="number" min="0" value="0"></label><label class="check-line"><input type="checkbox" name="is_combo"> É um combo/kit</label><button class="button primary" type="submit">Adicionar produto</button></form><div class="admin-list"><h3>Produtos cadastrados</h3><div id="adminProductList"><div class="empty-state">Carregando produtos...</div></div></div></div>`;
+    html += `<div class="admin-tools"><form class="form-card" id="adminProductForm"><h3 id="adminProductFormTitle">Adicionar produto</h3><label>Título<input name="titulo" required></label><label>Descrição<textarea name="descricao" rows="3"></textarea></label><div class="form-row"><label>Preço<input name="preco" type="number" step="0.01" min="0" required></label><label>Categoria<select name="categoria"><option value="livro">Livro</option><option value="papelaria">Papelaria</option></select></label></div><div id="trechoFieldWrapper"><label>Trecho da primeira página<textarea name="amostra_primeira_pagina" rows="4" placeholder="Cole aqui o trecho da primeira página do livro"></textarea></label><p class="muted" style="font-size:11px">Aparece no botão "Ler um trecho" do livro. Deixe em branco se ainda não tiver o texto.</p></div><label>Gênero<input name="genero"></label><label>Imagem por URL (opcional)<input name="imagem" type="url" placeholder="https://..."></label><label>Ou enviar imagem do computador<input name="imagem_arquivo" type="file" accept="image/jpeg,image/png,image/webp,image/gif"></label><p class="muted" style="font-size:11px">JPG, PNG, WEBP ou GIF até 4 MB. Se enviar um ficheiro, ele terá prioridade sobre a URL.</p><label>Estoque<input name="estoque" type="number" min="0" value="0"></label><label class="check-line"><input type="checkbox" name="is_combo"> É um combo/kit</label><div class="button-row"><button class="button primary" type="submit" id="adminProductSubmitButton">Adicionar produto</button><button class="button secondary" type="button" id="cancelProductEditButton" hidden>Cancelar edição</button></div></form><div class="admin-list"><h3>Produtos cadastrados</h3><div id="adminProductList"><div class="empty-state">Carregando produtos...</div></div></div></div>`;
     html += `<div class="admin-tools"><div class="admin-list"><h3>Estoque</h3><div id="adminStockList"><div class="empty-state">Carregando estoque...</div></div></div><div class="admin-list"><h3>Funcionários e permissões</h3><form id="employeeForm" class="form-card"><label>Nome<input name="nome" required></label><label>E-mail<input name="email" type="email" required></label><label>Senha<input name="password" type="password" minlength="6" required></label><label>Permissão<select name="tipo_usuario"><option value="funcionario">Funcionário</option><option value="dona">Dona</option><option value="admin">Administradora</option></select></label><button class="button primary" type="submit">Adicionar funcionário</button></form><div id="employeeList"><div class="empty-state">Carregando equipe...</div></div></div></div>`;
     html += `<div class="admin-tools"><div class="admin-list"><h3>Chat VIP</h3><form id="vipMessageForm" class="form-card"><label>Mensagem<textarea name="conteudo" rows="4" required maxlength="500"></textarea></label><button class="button primary" type="submit">Enviar notícia VIP</button></form></div><div class="admin-list"><h3>Composição de combos</h3><form class="form-card" id="comboForm"><label>Combo<select name="combo_id" id="comboProductSelect"></select></label><label>Itens (um por linha: id do produto x quantidade)<textarea name="itens" id="comboItensInput" rows="4" placeholder="ex: 3f2e...-id x 1"></textarea></label><button class="button primary" type="submit">Salvar composição</button></form><p class="muted" style="font-size:11px">Cole o ID do produto (visível na lista de produtos cadastrados) — estrutural, por isso é só da dona.</p></div></div>`;
     html += `<div class="admin-tools"><div class="admin-list"><h3>Moderação — Chat livre</h3><p class="muted" style="font-size:12px">Abra a aba <a class="text-link" href="#comunidade">Comunidade</a> e use "Remover" em cada mensagem.</p></div><div class="admin-list"><h3>Moderação — Avaliações</h3><p class="muted" style="font-size:12px">Abra um produto e use "Remover" em cada avaliação. Só dona/admin veem esse botão.</p></div></div>`;
@@ -117,6 +177,7 @@ function renderAdmin() {
 
   $('#adminPanel').insertAdjacentHTML('beforeend', html);
   renderAdminProducts();
+  toggleTrechoField();
   populatePromoSelect();
   loadAdminOrders();
   if (owner) { renderAdminStock(); renderEmployees(); populateComboSelect(); }
@@ -125,7 +186,13 @@ function populatePromoSelect() { const select = $('#promoProductSelect'); if (!s
 function fillPromoForm() { const select = $('#promoProductSelect'); const product = (state.adminProducts || []).find(p => String(p.id) === select.value); if (!product) return; $('#promoActive').checked = Boolean(product.promocao); $('#promoOldPrice').value = product.preco_antigo || ''; }
 function populateComboSelect() { const select = $('#comboProductSelect'); if (!select) return; const combos = (state.adminProducts || []).filter(p => p.is_combo); select.innerHTML = combos.length ? combos.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.titulo)}</option>`).join('') : '<option value="">Nenhum combo cadastrado ainda</option>'; }
 async function loadAdminOrders() { const target = $('#adminOrdersList'); if (!target) return; try { state.adminPedidos = await apiRequest('/pedidos'); target.innerHTML = state.adminPedidos.length ? state.adminPedidos.map(pedido => `<div class="admin-row"><div><strong>${escapeHtml(pedido.profiles?.nome || 'Cliente')}</strong><small>${(pedido.pedido_itens || []).map(i => i.produtos?.titulo || 'item').join(', ')} · ${formatPrice(pedido.total)}</small></div>${isOwnerUser() ? `<select data-order-status="${escapeHtml(pedido.id)}"><option value="pendente" ${pedido.status === 'pendente' ? 'selected' : ''}>Pendente</option><option value="preparando" ${pedido.status === 'preparando' ? 'selected' : ''}>Preparando</option><option value="enviado" ${pedido.status === 'enviado' ? 'selected' : ''}>Enviado</option><option value="entregue" ${pedido.status === 'entregue' ? 'selected' : ''}>Entregue</option><option value="cancelado" ${pedido.status === 'cancelado' ? 'selected' : ''}>Cancelado</option></select>` : `<span class="muted" style="font-size:12px">${escapeHtml(pedido.status)}</span>`}<button class="mini-button" data-order-chat="${escapeHtml(pedido.id)}">Conversar</button></div>`).join('') : '<div class="empty-state">Nenhum pedido no momento.</div>'; } catch (error) { console.error('Falha ao carregar pedidos administrativos.', error); target.innerHTML = '<div class="empty-state">Não foi possível carregar os pedidos.</div>'; } }
-function renderAdminProducts() { const list = state.adminProducts || []; const target = $('#adminProductList'); if (!target) return; target.innerHTML = list.length ? list.map(product => `<div class="admin-row"><div><strong>${escapeHtml(product.titulo)}</strong><small>${escapeHtml(product.id)} · ${escapeHtml(product.categoria)} · ${formatPrice(product.preco)}</small></div><form data-product-edit="${escapeHtml(product.id)}"><input name="preco" type="number" step="0.01" min="0" value="${Number(product.preco) || 0}" aria-label="Preço de ${escapeHtml(product.titulo)}"><button class="mini-button">Salvar</button><button type="button" class="remove-item" data-product-remove="${escapeHtml(product.id)}">Remover</button></form></div>`).join('') : '<div class="empty-state">Nenhum produto cadastrado.</div>'; }
+function renderAdminProducts() { const list = state.adminProducts || []; const target = $('#adminProductList'); if (!target) return; target.innerHTML = list.length ? list.map(product => `<div class="admin-row">${product.disponivel === false ? '<span style="font-size:11px;font-weight:700;color:#b23b3b;border:1px solid #b23b3b55;border-radius:6px;padding:2px 6px;margin-right:8px">Indisponível</span>' : ''}<div><strong>${escapeHtml(product.titulo)}</strong><small>${escapeHtml(product.id)} · ${escapeHtml(product.categoria)} · ${formatPrice(product.preco)}</small></div><form data-product-edit="${escapeHtml(product.id)}"><input name="preco" type="number" step="0.01" min="0" value="${Number(product.preco) || 0}" aria-label="Preço de ${escapeHtml(product.titulo)}"><button class="mini-button">Salvar</button></form><button type="button" class="mini-button" data-product-edit-full="${escapeHtml(product.id)}">Editar</button>${product.disponivel === false ? `<button type="button" class="mini-button" data-product-reactivate="${escapeHtml(product.id)}">Reativar</button>` : `<button type="button" class="remove-item" data-product-remove="${escapeHtml(product.id)}">Remover</button>`}</div>`).join('') : '<div class="empty-state">Nenhum produto cadastrado.</div>'; }
+
+function toggleTrechoField() { const form = $('#adminProductForm'); const wrapper = $('#trechoFieldWrapper'); if (!form || !wrapper) return; wrapper.hidden = form.categoria.value !== 'livro'; }
+
+function resetProductFormToCreateMode() { const form = $('#adminProductForm'); if (!form) return; delete form.dataset.editingId; form.reset(); $('#adminProductFormTitle').textContent = 'Adicionar produto'; $('#adminProductSubmitButton').textContent = 'Adicionar produto'; $('#cancelProductEditButton').hidden = true; toggleTrechoField(); }
+
+function fillProductFormForEdit(product) { const form = $('#adminProductForm'); if (!form) return; form.titulo.value = product.titulo || ''; form.descricao.value = product.descricao || ''; form.preco.value = Number(product.preco) || 0; form.categoria.value = product.categoria || 'livro'; form.genero.value = product.genero || ''; form.imagem.value = product.imagem || ''; form.estoque.value = Number(product.estoque) || 0; form.is_combo.checked = Boolean(product.is_combo); form.amostra_primeira_pagina.value = product.amostra_primeira_pagina || ''; form.dataset.editingId = product.id; $('#adminProductFormTitle').textContent = `Editando: ${product.titulo}`; $('#adminProductSubmitButton').textContent = 'Salvar alterações'; $('#cancelProductEditButton').hidden = false; toggleTrechoField(); form.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 function renderAdminStock() { const target = $('#adminStockList'); if (!target) return; const list = state.adminProducts || []; target.innerHTML = list.length ? list.map(product => `<form class="admin-row" data-stock-edit="${escapeHtml(product.id)}"><div><strong>${escapeHtml(product.titulo)}</strong><small>${Number(product.estoque) === 0 ? 'Sem estoque' : Number(product.estoque) <= 5 ? 'Estoque baixo' : 'Disponível'}</small></div><input name="estoque" type="number" min="0" value="${Number(product.estoque) || 0}" aria-label="Estoque de ${escapeHtml(product.titulo)}"><button class="mini-button">Atualizar</button></form>`).join('') : '<div class="empty-state">Nenhum produto cadastrado.</div>'; }
 function renderEmployees() { const target = $('#employeeList'); if (!target) return; const list = state.employees || []; target.innerHTML = list.length ? list.map(employee => `<div class="admin-row"><div><strong>${escapeHtml(employee.nome || employee.email || 'Usuário')}</strong><small>${escapeHtml(employee.email || '')}</small></div><select data-role-edit="${escapeHtml(employee.id)}"><option value="funcionario" ${employee.tipo_usuario === 'funcionario' ? 'selected' : ''}>Funcionário</option><option value="dona" ${employee.tipo_usuario === 'dona' ? 'selected' : ''}>Dona</option><option value="admin" ${employee.tipo_usuario === 'admin' ? 'selected' : ''}>Administradora</option></select><button type="button" class="remove-item" data-employee-remove="${escapeHtml(employee.id)}">Remover</button></div>`).join('') : '<div class="empty-state">Nenhum funcionário cadastrado.</div>'; }
 async function loadAdminData() { if (!isAdminUser()) return; try { const [metrics, products] = await Promise.all([apiRequest('/admin/dashboard'), apiRequest('/admin/produtos')]); state.adminMetrics = metrics; state.adminProducts = products; if (isOwnerUser()) state.employees = await apiRequest('/admin/funcionarios'); renderAdmin(); } catch (error) { console.error('Falha ao carregar painel administrativo.', error); toast(error.message || 'Não foi possível carregar o painel.'); } }
@@ -153,9 +220,17 @@ async function handleAdminSubmit(event) {
       body.preco = Number(body.preco);
       body.estoque = Number(body.estoque || 0);
       body.is_combo = form.is_combo.checked;
+      if (body.categoria !== 'livro') delete body.amostra_primeira_pagina;
       if (imageFile?.size) body.imagem_data = await readProductImage(imageFile);
-      await apiRequest('/produtos', { method: 'POST', body: JSON.stringify(body) });
-      toast('Produto adicionado com sucesso.');
+      const editingId = form.dataset.editingId;
+      if (editingId) {
+        await apiRequest(`/produtos/${encodeURIComponent(editingId)}`, { method: 'PATCH', body: JSON.stringify(body) });
+        toast('Produto atualizado com sucesso.');
+      } else {
+        await apiRequest('/produtos', { method: 'POST', body: JSON.stringify(body) });
+        toast('Produto adicionado com sucesso.');
+      }
+      resetProductFormToCreateMode();
     }
     else if (form.id === 'employeeForm') { await apiRequest('/admin/funcionarios', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(form))) }); toast('Funcionário adicionado com sucesso.'); }
     else if (form.id === 'vipMessageForm') { await apiRequest('/admin/chat-vip', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(form))) }); toast('Notícia VIP enviada com sucesso.'); }
@@ -169,13 +244,18 @@ async function handleAdminSubmit(event) {
 }
 async function handleAdminClick(event) {
   const orderChatButton = event.target.closest('[data-order-chat]'); if (orderChatButton) { const pedido = (state.adminPedidos.find(p => p.id === orderChatButton.dataset.orderChat)) || (state.meusPedidos.find(p => p.id === orderChatButton.dataset.orderChat)); openPedidoChat(orderChatButton.dataset.orderChat, pedido ? `Pedido de ${pedido.profiles?.nome || 'você'}` : 'Pedido'); return; }
+  const editFullButton = event.target.closest('[data-product-edit-full]'); if (editFullButton) { const product = (state.adminProducts || []).find(p => String(p.id) === editFullButton.dataset.productEditFull); if (product) fillProductFormForEdit(product); return; }
+  const reactivateButton = event.target.closest('[data-product-reactivate]'); if (reactivateButton) { try { await apiRequest(`/produtos/${encodeURIComponent(reactivateButton.dataset.productReactivate)}`, { method: 'PATCH', body: JSON.stringify({ disponivel: true }) }); toast('Produto reativado e voltou a aparecer na loja.'); await loadAdminData(); await loadProducts(); } catch (error) { toast(error.message || 'Não foi possível reativar o produto.'); } return; }
+  const cancelEditButton = event.target.closest('#cancelProductEditButton'); if (cancelEditButton) { resetProductFormToCreateMode(); return; }
   const reviewRemove = event.target.closest('[data-review-remove]'); if (reviewRemove) { try { await apiRequest(`/avaliacoes/${encodeURIComponent(reviewRemove.dataset.reviewRemove)}`, { method: 'DELETE' }); toast('Avaliação removida.'); await loadReviews(state.selectedProduct.id); } catch (error) { toast(error.message || 'Não foi possível remover a avaliação.'); } return; }
   const messageRemove = event.target.closest('[data-message-remove]'); if (messageRemove) { try { await apiRequest(`/chat/${encodeURIComponent(messageRemove.dataset.messageRemove)}`, { method: 'DELETE' }); toast('Mensagem removida.'); await loadChat(); } catch (error) { toast(error.message || 'Não foi possível remover a mensagem.'); } return; }
   const button = event.target.closest('[data-admin-logout], [data-product-remove], [data-employee-remove]'); if (!button) return;
   if (button.dataset.adminLogout !== undefined) { state.user = null; localStorage.removeItem(STORAGE_KEYS.user); localStorage.removeItem(STORAGE_KEYS.session); $('#adminLoginForm').reset(); updateAccount(); toast('Sessão administrativa encerrada.'); location.hash = '#home'; return; }
-  try { if (button.dataset.productRemove) { await apiRequest(`/produtos/${encodeURIComponent(button.dataset.productRemove)}`, { method: 'DELETE' }); toast('Produto removido com sucesso.'); } else if (button.dataset.employeeRemove) { await apiRequest(`/admin/funcionarios/${encodeURIComponent(button.dataset.employeeRemove)}`, { method: 'DELETE' }); toast('Funcionário removido com sucesso.'); } await loadAdminData(); await loadProducts(); } catch (error) { console.error('Falha em operação administrativa.', error); toast(error.message || 'Operação não realizada.'); }
+  try { if (button.dataset.productRemove) { const result = await apiRequest(`/produtos/${encodeURIComponent(button.dataset.productRemove)}`, { method: 'DELETE' }); toast(result?.message || 'Produto removido com sucesso.'); } else if (button.dataset.employeeRemove) { await apiRequest(`/admin/funcionarios/${encodeURIComponent(button.dataset.employeeRemove)}`, { method: 'DELETE' }); toast('Funcionário removido com sucesso.'); } await loadAdminData(); await loadProducts(); } catch (error) { console.error('Falha em operação administrativa.', error); toast(error.message || 'Operação não realizada.'); }
 }
 async function handleAdminChange(event) {
+  const categoriaSelect = event.target.closest('#adminProductForm select[name="categoria"]'); if (categoriaSelect) { toggleTrechoField(); return; }
+
   const roleSelect = event.target.closest('[data-role-edit]'); if (roleSelect) { try { await apiRequest(`/admin/funcionarios/${encodeURIComponent(roleSelect.dataset.roleEdit)}/permissao`, { method: 'PATCH', body: JSON.stringify({ tipo_usuario: roleSelect.value }) }); toast('Permissão atualizada com sucesso.'); await loadAdminData(); } catch (error) { console.error('Falha em operação administrativa.', error); toast(error.message || 'Operação não realizada.'); } return; }
   const statusSelect = event.target.closest('[data-order-status]'); if (statusSelect) { try { await apiRequest(`/pedidos/${encodeURIComponent(statusSelect.dataset.orderStatus)}/status`, { method: 'PATCH', body: JSON.stringify({ status: statusSelect.value }) }); toast('Status do pedido atualizado.'); await loadAdminOrders(); } catch (error) { toast(error.message || 'Não foi possível atualizar o status.'); } }
 }
@@ -194,6 +274,9 @@ function setupEvents() {
   $('#drawerOverlay').addEventListener('click', closeCart);
   $('#closeModal').addEventListener('click', () => $('#productModal').close());
   $('#closePreview').addEventListener('click', () => $('#previewModal').close());
+  $('#closePayment').addEventListener('click', () => $('#paymentModal').close());
+  $('#paymentOptions').addEventListener('click', event => { const option = event.target.closest('[data-payment-method]'); if (option) selectPaymentMethod(option.dataset.paymentMethod); });
+  $('#confirmPaymentButton').addEventListener('click', confirmPayment);
   $('#closeOrderChat').addEventListener('click', () => $('#orderChatModal').close());
   $('#orderChatForm').addEventListener('submit', submitOrderMessage);
   $('#logoutButton').addEventListener('click', () => { state.user = null; localStorage.removeItem(STORAGE_KEYS.user); localStorage.removeItem(STORAGE_KEYS.session); updateAccount(); toast('Você saiu da sua conta.'); location.hash = '#home'; });
