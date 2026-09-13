@@ -3,7 +3,7 @@
    Reaproveita as variáveis de cor/tipografia/sombra já definidas em :root
    (ver styles.css) para manter a identidade visual do site. */
 
-#gtbChatbotRoot { position: fixed; right: 22px; bottom: 22px; z-index: 42; font-family: "DM Sans", sans-serif; }
+#gtbChatbotRoot { position: fixed; right: 22px; bottom: 90px; z-index: 42; font-family: "DM Sans", sans-serif; }
 
 .gtb-toggle {
   width: 60px;
@@ -131,7 +131,7 @@
 .gtb-send svg { width: 16px; height: 16px; }
 
 @media (max-width: 480px) {
-  #gtbChatbotRoot { right: 14px; bottom: 14px; }
+  #gtbChatbotRoot { right: 14px; bottom: 78px; }
   .gtb-toggle { width: 54px; height: 54px; }
   .gtb-panel {
     right: -6px;
